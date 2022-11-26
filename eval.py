@@ -11,8 +11,10 @@ try:
     if (torch.backends.mps.is_available()):
         device = torch.device('mps')
 except:
-    if (torch.cuda.is_available()):
-        device = torch.device('cuda')
+    pass
+
+if (torch.cuda.is_available()):
+    device = torch.device('cuda')
 
 print(f"Device: {device}")
 
