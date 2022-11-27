@@ -28,14 +28,14 @@ def apply_attention_mask(embeddings, mask):
 
 class SentSim_MeanPool(nn.Module):
 
-    def __init__(self):
+    def __init__(self, enc_device):
         super().__init__()
 
         # Load tokenizer and encoder
         from transformers import AutoTokenizer, AutoModel
         checkpoint = 'sentence-transformers/bert-base-nli-mean-tokens'
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-        self.encoder = AutoModel.from_pretrained(checkpoint).to(device)
+        self.encoder = AutoModel.from_pretrained(checkpoint).to(enc_device)
 
         self.bias = nn.Parameter(torch.tensor(0.8))
         self.weight = nn.Parameter(torch.tensor(1.0))
@@ -90,7 +90,7 @@ class SentSim_MeanPool(nn.Module):
         return y
 
 
-model = SentSim_MeanPool().to(device)
+model = SentSim_MeanPool(enc_device=device).to(device)
 
 # Eval function
 
