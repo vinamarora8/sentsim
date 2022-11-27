@@ -35,6 +35,9 @@ class SentSim_MeanPool(nn.Module):
         self.bias = nn.Parameter(torch.tensor(0.8))
         self.weight = nn.Parameter(torch.tensor(1.0))
 
+        self.lin1 = nn.Linear(2 * 60 * 768, 100)
+        self.lin2 = nn.Linear(2 * 60 * 768, 100)
+
         self.tokenizer = tokenizer
         self.encoder = encoder
 
@@ -64,10 +67,20 @@ class SentSim_MeanPool(nn.Module):
             x1 = apply_attention_mask(emb1, att1)
             x2 = apply_attention_mask(emb2, att2)
 
+        '''
         x1 = torch.sum(x1, -2) # Sum over words
         x2 = torch.sum(x2, -2) # Sum over words
+        '''
 
-        y = F.cosine_similarity(x1, x2).unsqueeze(-1)
+        x1 = x1.flatten(-2)
+        x2 = x2.flatten(-2)
+
+        x = torch.cat((x1, x2), dim=-1)
+
+        e1 = self.lin1(x)
+        e2 = self.lin2(x)
+
+        y = F.cosine_similarity(e1, e2).unsqueeze(-1)
 
         #y = self.lin_op(y)
         y = torch.sigmoid(self.weight*(y - self.bias))
@@ -89,11 +102,11 @@ train_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True
 model = SentSim_MeanPool(tokenizer=tokenizer, encoder=encoder).to(device)
 
 criterion = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.5, momentum=0.7)
-lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
+lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
 model.train()
-for epoch in range(50):
+for epoch in range(20):
     print(f'EPOCH {epoch}')
 
 
@@ -110,7 +123,9 @@ for epoch in range(50):
         loss.backward()
         optimizer.step()
 
-    print(loss.item(), model.bias.item(), model.weight.item())
+        if i % 10 == 0:
+            print(f'Iteration {i}: ', end='')
+            print(loss.item(), model.bias.item(), model.weight.item())
     lr_sched.step()
 
 
