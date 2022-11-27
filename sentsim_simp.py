@@ -83,7 +83,6 @@ class SentSim_MeanPool(nn.Module):
         e2 = self.lin2(x)
 
         y = F.cosine_similarity(e1, e2).unsqueeze(-1)
-
         y = torch.sigmoid(self.weight*(y - self.bias))
 
         return y
@@ -118,14 +117,14 @@ def eval_model(dataset):
         outputs = model.forward(sent1, sent2)
         outputs = (outputs > 0.5).float()
 
-        err += (y - outputs).abs().mean() / len(train_loader)
+        err += (y - outputs).abs().mean() / len(dataloader)
 
     return err.item()
 
 
 criterion = nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
-lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
 print(f'Initial train_data error {eval_model(train_dataset)}')
 print()
