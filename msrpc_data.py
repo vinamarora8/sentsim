@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 
 class MsrPCDataset(Dataset):
 
-    def __init__(self, test=False, tokenizer=None):
+    def __init__(self, test=False):
 
         self.train_fname = 'data/msr-paraphrase-corpus/msr_paraphrase_train.txt'
         self.test_fname = 'data/msr-paraphrase-corpus/msr_paraphrase_test.txt'
@@ -15,22 +15,6 @@ class MsrPCDataset(Dataset):
         self.sentence2 = []
         self.match     = []
         self.readfile(self.fname) # Updates the above lists
-
-        # Tokenize if asked
-        if tokenizer is not None:
-            self.sentence1 = tokenizer(
-                self.sentence1,
-                padding=True,
-                truncation=True,
-                return_tensors='pt'
-            )
-
-            self.sentence2 = tokenizer(
-                self.sentence2,
-                padding=True,
-                truncation=True,
-                return_tensors='pt'
-            )
 
     def readfile(self, fname):
         '''
@@ -56,6 +40,6 @@ class MsrPCDataset(Dataset):
 
     def __getitem__(self, idx):
         x = [self.sentence1[idx], self.sentence2[idx]]
-        y = self.match[idx]
+        y = torch.tensor(self.match[idx]).unsqueeze(-1)
 
         return x, y
