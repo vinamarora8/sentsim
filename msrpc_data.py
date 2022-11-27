@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+import random
 
 class MsrPCDataset(Dataset):
 
@@ -11,10 +12,14 @@ class MsrPCDataset(Dataset):
         self.fname = self.test_fname if test else self.train_fname
 
         # Read data from file
+        self.sentences_dict = {0:[], 1:[]}
+        self.readfile(self.fname) # Updates the above lists
+
+        # Clean data
         self.sentence1 = []
         self.sentence2 = []
-        self.match     = []
-        self.readfile(self.fname) # Updates the above lists
+        self.match = []
+        self.split_data()
 
         # Tokenize if asked
         if tokenizer is not None:
@@ -46,10 +51,20 @@ class MsrPCDataset(Dataset):
                 m = int(split_line[0])
                 s1 = split_line[3]
                 s2 = split_line[4]
+                self.sentences_dict[m].append([s1, s2, m])
 
-                self.sentence1.append(s1)
-                self.sentence2.append(s2)
-                self.match.append(m)
+    def split_data(self):
+        required_len = min(len(self.sentences_dict[0]), len(self.sentences_dict[1]))
+        # randomly pick required_len from both the sets
+        combined_list = []
+        combined_list.extend(random.sample(self.sentences_dict[0], required_len))
+        combined_list.extend(random.sample(self.sentences_dict[1], required_len))
+        random.shuffle(combined_list)
+        for sent_set in combined_list:
+            self.sentence1.append(sent_set[0])
+            self.sentence2.append(sent_set[1])
+            self.match.append(sent_set[2])        
+        
 
     def __len__(self):
         return len(self.match)
