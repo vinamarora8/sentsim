@@ -23,6 +23,7 @@ class MsrPCDataset(Dataset):
         self.match = []
 
         self.split_data()
+        self.augment_data()
 
         L = len(self.match)
         if split == 'train':
@@ -69,6 +70,29 @@ class MsrPCDataset(Dataset):
             self.sentence1.append(sent_set[0])
             self.sentence2.append(sent_set[1])
             self.match.append(sent_set[2])
+
+
+    def augment_data(self):
+        L = self.__len__()
+
+        aug1 = [self.sentence1, self.sentence1, [1]*L]
+        aug2 = [self.sentence2, self.sentence2, [1]*L]
+        aug3 = [self.sentence1[:-1], self.sentence1[1:], [0]*(L-1)]
+        aug4 = [self.sentence2[:-1], self.sentence2[1:], [0]*(L-1)]
+
+        self.sentence1 = self.sentence1 + aug1[0] + aug2[0] + aug3[0] + aug4[0]
+        self.sentence2 = self.sentence2 + aug1[1] + aug2[1] + aug3[1] + aug4[1]
+        self.match = self.match + aug1[2] + aug2[2] + aug3[2] + aug4[2]
+
+        # Shuffle
+        z = list(zip(self.sentence1, self.sentence2, self.match))
+        random.shuffle(z)
+        self.sentence1, self.sentence2, self.match = zip(*z)
+
+        self.sentence1 = list(self.sentence1)
+        self.sentence2 = list(self.sentence2)
+        self.match = list(self.match)
+
 
 
     def __len__(self):
