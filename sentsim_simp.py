@@ -93,7 +93,7 @@ def eval_model(model, dataset):
 
 def train_model(model, train_dataset, val_dataset):
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=256, shuffle=True)
     criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
     lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
