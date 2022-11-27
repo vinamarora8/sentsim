@@ -4,22 +4,41 @@ import random
 
 class MsrPCDataset(Dataset):
 
-    def __init__(self, test=False):
+    def __init__(self, split):
+        '''
+        split: 'test', 'train', or 'val'
+        '''
 
         self.train_fname = 'data/msr-paraphrase-corpus/msr_paraphrase_train.txt'
         self.test_fname = 'data/msr-paraphrase-corpus/msr_paraphrase_test.txt'
 
-        self.fname = self.test_fname if test else self.train_fname
-
         # Read data from file
         self.sentences_dict = {0:[], 1:[]}
-        self.readfile(self.fname) # Updates the above lists
+        self.readfile(self.train_fname) # Updates the above lists
+        self.readfile(self.test_fname) # Updates the above lists
 
         # Clean data
         self.sentence1 = []
         self.sentence2 = []
         self.match = []
+
         self.split_data()
+
+        L = len(self.match)
+        if split == 'train':
+            idx_start = 0
+            idx_end = idx_start + int(0.7 * L)
+        elif split == 'val':
+            idx_start = int(0.7 * L)
+            idx_end = idx_start + int(0.15 * L)
+        elif split == 'test':
+            idx_start = int(0.85 * L)
+            idx_end = L
+
+        self.sentence1 = self.sentence1[idx_start:idx_end]
+        self.sentence2 = self.sentence2[idx_start:idx_end]
+        self.match = self.match[idx_start:idx_end]
+
 
     def readfile(self, fname):
         '''
@@ -38,6 +57,8 @@ class MsrPCDataset(Dataset):
                 self.sentences_dict[m].append([s1, s2, m])
 
     def split_data(self):
+        random.seed(0)
+
         required_len = min(len(self.sentences_dict[0]), len(self.sentences_dict[1]))
         # randomly pick required_len from both the sets
         combined_list = []
@@ -47,8 +68,8 @@ class MsrPCDataset(Dataset):
         for sent_set in combined_list:
             self.sentence1.append(sent_set[0])
             self.sentence2.append(sent_set[1])
-            self.match.append(sent_set[2])        
-        
+            self.match.append(sent_set[2])
+
 
     def __len__(self):
         return len(self.match)

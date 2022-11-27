@@ -35,8 +35,10 @@ class SentSim_MeanPool(nn.Module):
         self.bias = nn.Parameter(torch.tensor(0.8))
         self.weight = nn.Parameter(torch.tensor(1.0))
 
-        self.lin1 = nn.Linear(2 * 60 * 768, 100)
-        self.lin2 = nn.Linear(2 * 60 * 768, 100)
+        self.lin1 = nn.Linear(2 * 60 * 768, 768)
+        self.lin2 = nn.Linear(2 * 60 * 768, 768)
+
+        self.dropout = nn.Dropout(p=0.5)
 
         self.tokenizer = tokenizer
         self.encoder = encoder
@@ -77,6 +79,8 @@ class SentSim_MeanPool(nn.Module):
 
         x = torch.cat((x1, x2), dim=-1)
 
+        x = self.dropout(x)
+
         e1 = self.lin1(x)
         e2 = self.lin2(x)
 
@@ -92,26 +96,46 @@ class SentSim_MeanPool(nn.Module):
 # Prepare dataset
 checkpoint = 'sentence-transformers/paraphrase-MiniLM-L6-v2'
 checkpoint = 'sentence-transformers/bert-base-nli-mean-tokens'
+#checkpoint = 'bert-base-uncased'
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 encoder = AutoModel.from_pretrained(checkpoint).to(device)
 
-dataset = MsrPCDataset(test=False)
+train_dataset = MsrPCDataset(split = 'train')
+val_dataset = MsrPCDataset(split = 'val')
 
-train_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True)
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
 
 model = SentSim_MeanPool(tokenizer=tokenizer, encoder=encoder).to(device)
+
+def eval_model(dataset):
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True)
+
+    err = 0.0
+    for i, data in enumerate(dataloader):
+
+        model.eval()
+
+        (sent1, sent2), y = data
+        y = y.to(device)
+
+        outputs = model.forward(sent1, sent2)
+        outputs = (outputs > 0.5).float()
+
+        err += (y - outputs).abs().mean() / len(train_loader)
+
+    return err
 
 criterion = nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
 lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
-model.train()
-for epoch in range(20):
-    print(f'EPOCH {epoch}')
+print(eval_model(train_dataset))
 
+for epoch in range(20):
+    print(f'Epoch {epoch}: Val error: {eval_model(val_dataset).item()}')
 
     for i, data in enumerate(train_loader):
-
+        model.train()
         optimizer.zero_grad()
 
         (sent1, sent2), y = data
@@ -124,22 +148,8 @@ for epoch in range(20):
         optimizer.step()
 
         if i % 10 == 0:
-            print(f'Iteration {i}: ', end='')
-            print(loss.item(), model.bias.item(), model.weight.item())
+            print(f'Iteration {i}: Loss: {loss.item()}')
+
     lr_sched.step()
 
-
-err = 0.0
-for i, data in enumerate(train_loader):
-
-    model.eval()
-
-    (sent1, sent2), y = data
-    y = y.to(device)
-
-    outputs = model.forward(sent1, sent2)
-    outputs = (outputs > 0.5).float()
-
-    err += (y - outputs).abs().mean() / len(train_loader)
-
-print(err.item())
+print(eval_model(train_dataset))
