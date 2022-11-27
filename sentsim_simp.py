@@ -32,8 +32,7 @@ class SentSim_MeanPool(nn.Module):
     def __init__(self, tokenizer, encoder):
         super().__init__()
 
-        #self.lin_op = nn.Linear(1, 1)
-        self.bias = nn.Parameter(torch.tensor(1.0))
+        self.bias = nn.Parameter(torch.tensor(0.8))
         self.weight = nn.Parameter(torch.tensor(1.0))
 
         self.tokenizer = tokenizer
@@ -50,8 +49,8 @@ class SentSim_MeanPool(nn.Module):
         '''
 
         with torch.no_grad():
-            tkn1 = self.tokenizer(sent1, padding = True, truncation = True, return_tensors='pt')
-            tkn2 = self.tokenizer(sent2, padding = True, truncation = True, return_tensors='pt')
+            tkn1 = self.tokenizer(sent1, padding='max_length', max_length=60, return_tensors='pt')
+            tkn2 = self.tokenizer(sent2, padding='max_length', max_length=60, return_tensors='pt')
 
             tkn1 = tkn1.to(encoder.device)
             tkn2 = tkn2.to(encoder.device)
@@ -85,13 +84,13 @@ encoder = AutoModel.from_pretrained(checkpoint).to(device)
 
 dataset = MsrPCDataset(test=False)
 
-train_loader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=True)
+train_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True)
 
 model = SentSim_MeanPool(tokenizer=tokenizer, encoder=encoder).to(device)
 
-criterion = nn.BCELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
-lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+criterion = nn.MSELoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=0.5, momentum=0.7)
+lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
 model.train()
 for epoch in range(50):
