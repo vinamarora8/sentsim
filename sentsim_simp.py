@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from msrpc_data import MsrPCDataset
 
 class SentSim(nn.Module):
 
@@ -72,26 +71,8 @@ class SentSim(nn.Module):
         return y
 
 
-# Set device
-device = torch.device('cpu')
-try:
-    if (torch.backends.mps.is_available()):
-        device = torch.device('mps')
-except:
-    pass
+def eval_model(model, dataset):
 
-if (torch.cuda.is_available()):
-    device = torch.device('cuda')
-
-print(f"Device: {device}")
-
-
-model = SentSim(enc_device=device).to(device)
-
-
-# Eval function
-
-def eval_model(dataset):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True)
 
     err = 0.0
@@ -110,43 +91,73 @@ def eval_model(dataset):
     return err.item()
 
 
-# Datasets
+def train_model(model, train_dataset, val_dataset):
 
-train_dataset = MsrPCDataset(split = 'train')
-val_dataset = MsrPCDataset(split = 'val')
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
+    lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+
+    for epoch in range(30):
+        print(f'Epoch {epoch+1}: Val error: {eval_model(model, val_dataset)}')
+
+        for i, data in enumerate(train_loader):
+            model.train()
+            optimizer.zero_grad()
+
+            (sent1, sent2), y = data
+            outputs = model.forward(sent1, sent2)
+
+            y = y.to(device).float()
+
+            loss = criterion(outputs.reshape(-1), y.reshape(-1))
+            loss.backward()
+            optimizer.step()
+
+            if i % 10 == 0:
+                print(f'Iteration {i}: Loss: {loss.item()}')
+
+        lr_sched.step()
+        print()
 
 
-# Training
+def save_model(model, name):
+    import os
+    folder = "savestate"
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
-print(f'Initial train_data error {eval_model(train_dataset)}')
-print()
+    filename = folder + "/" + name + ".model"
+    torch.save(model.state_dict(), filename)
 
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
-criterion = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
-lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+    print(f"Model saved to {filename}")
 
-for epoch in range(20):
-    print(f'Epoch {epoch+1}: Val error: {eval_model(val_dataset)}')
 
-    for i, data in enumerate(train_loader):
-        model.train()
-        optimizer.zero_grad()
+if __name__ == '__main__':
 
-        (sent1, sent2), y = data
-        outputs = model.forward(sent1, sent2)
+    from msrpc_data import MsrPCDataset
+    from time import gmtime, strftime
 
-        y = y.to(device).float()
+    train_dataset = MsrPCDataset(split = 'train')
+    val_dataset = MsrPCDataset(split = 'val')
 
-        loss = criterion(outputs.reshape(-1), y.reshape(-1))
-        loss.backward()
-        optimizer.step()
+    device = torch.device('cuda')
+    model = SentSim(enc_device=device).to(device)
 
-        if i % 10 == 0:
-            print(f'Iteration {i}: Loss: {loss.item()}')
-
-    lr_sched.step()
+    val_err = eval_model(model, val_dataset)
+    print(f'Initial train_data_error: {eval_model(model, train_dataset)}')
+    print(f'Initial val_data_error: {val_err}')
     print()
 
-print(f'Final train_data_error: {eval_model(train_dataset)}')
-print(f'Final val_data_error: {eval_model(val_dataset)}')
+    name = strftime("%m_%d_%H%M", gmtime()) + "_msrpc_val" + str(int(val_err * 100.0))
+    save_model(model, name)
+
+    train_model(model, train_dataset, val_dataset)
+
+    val_err = eval_model(model, val_dataset)
+    print(f'Final train_data_error: {eval_model(model, train_dataset)}')
+    print(f'Final val_data_error: {val_err}')
+
+    # Save model
+    name = strftime("%m_%d_%H%M", gmtime()) + "_msrpc_val" + str(int(val_err * 100.0))
+    save_model(model, name)
