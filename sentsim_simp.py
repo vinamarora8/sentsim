@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-from transformers import AutoTokenizer, AutoModel
 from msrpc_data import MsrPCDataset
 
 from sklearn.metrics.pairwise import cosine_similarity
@@ -29,8 +28,14 @@ def apply_attention_mask(embeddings, mask):
 
 class SentSim_MeanPool(nn.Module):
 
-    def __init__(self, tokenizer, encoder):
+    def __init__(self):
         super().__init__()
+
+        # Load tokenizer and encoder
+        from transformers import AutoTokenizer, AutoModel
+        checkpoint = 'sentence-transformers/bert-base-nli-mean-tokens'
+        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+        self.encoder = AutoModel.from_pretrained(checkpoint).to(device)
 
         self.bias = nn.Parameter(torch.tensor(0.8))
         self.weight = nn.Parameter(torch.tensor(1.0))
@@ -39,9 +44,6 @@ class SentSim_MeanPool(nn.Module):
         self.lin2 = nn.Linear(2 * 60 * 768, 768)
 
         self.dropout = nn.Dropout(p=0.5)
-
-        self.tokenizer = tokenizer
-        self.encoder = encoder
 
 
     def forward(self, sent1, sent2):
@@ -59,14 +61,14 @@ class SentSim_MeanPool(nn.Module):
                                   return_tensors='pt'
                                   )
 
-            tkn1 = tkn1.to(encoder.device)
-            tkn2 = tkn2.to(encoder.device)
+            tkn1 = tkn1.to(self.encoder.device)
+            tkn2 = tkn2.to(self.encoder.device)
 
-            emb1 = self.encoder(**tkn1)[0].detach().to(encoder.device)
-            emb2 = self.encoder(**tkn2)[0].detach().to(encoder.device)
+            emb1 = self.encoder(**tkn1)[0].detach().to(self.encoder.device)
+            emb2 = self.encoder(**tkn2)[0].detach().to(self.encoder.device)
 
-            att1 = tkn1['attention_mask'].to(encoder.device)
-            att2 = tkn2['attention_mask'].to(encoder.device)
+            att1 = tkn1['attention_mask'].to(self.encoder.device)
+            att2 = tkn2['attention_mask'].to(self.encoder.device)
 
             x1 = apply_attention_mask(emb1, att1)
             x2 = apply_attention_mask(emb2, att2)
@@ -88,20 +90,10 @@ class SentSim_MeanPool(nn.Module):
         return y
 
 
+model = SentSim_MeanPool().to(device)
 
-# Prepare dataset
-checkpoint = 'sentence-transformers/paraphrase-MiniLM-L6-v2'
-checkpoint = 'sentence-transformers/bert-base-nli-mean-tokens'
-#checkpoint = 'bert-base-uncased'
-tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-encoder = AutoModel.from_pretrained(checkpoint).to(device)
+# Eval function
 
-train_dataset = MsrPCDataset(split = 'train')
-val_dataset = MsrPCDataset(split = 'val')
-
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
-
-model = SentSim_MeanPool(tokenizer=tokenizer, encoder=encoder).to(device)
 
 def eval_model(dataset):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True)
@@ -122,12 +114,21 @@ def eval_model(dataset):
     return err.item()
 
 
-criterion = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
-lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+# Datasets
+
+train_dataset = MsrPCDataset(split = 'train')
+val_dataset = MsrPCDataset(split = 'val')
+
+
+# Training
 
 print(f'Initial train_data error {eval_model(train_dataset)}')
 print()
+
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+criterion = nn.MSELoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
+lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
 for epoch in range(20):
     print(f'Epoch {epoch+1}: Val error: {eval_model(val_dataset)}')
