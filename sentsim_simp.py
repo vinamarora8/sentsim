@@ -45,17 +45,19 @@ class SentSim_MeanPool(nn.Module):
 
 
     def forward(self, sent1, sent2):
-        '''
-        emb1: Embedding of first sentence
-        att1: Attention mask for first sentence
 
-        emb2: Embedding of second sentence
-        att2: Attention mask for second sentence
-        '''
-
+        # Get embeddings from transformer encoder
         with torch.no_grad():
-            tkn1 = self.tokenizer(sent1, padding='max_length', max_length=60, return_tensors='pt')
-            tkn2 = self.tokenizer(sent2, padding='max_length', max_length=60, return_tensors='pt')
+            tkn1 = self.tokenizer(sent1,
+                                  padding='max_length',
+                                  max_length=60,
+                                  return_tensors='pt'
+                                  )
+            tkn2 = self.tokenizer(sent2,
+                                  padding='max_length',
+                                  max_length=60,
+                                  return_tensors='pt'
+                                  )
 
             tkn1 = tkn1.to(encoder.device)
             tkn2 = tkn2.to(encoder.device)
@@ -69,16 +71,12 @@ class SentSim_MeanPool(nn.Module):
             x1 = apply_attention_mask(emb1, att1)
             x2 = apply_attention_mask(emb2, att2)
 
-        '''
-        x1 = torch.sum(x1, -2) # Sum over words
-        x2 = torch.sum(x2, -2) # Sum over words
-        '''
 
+        # Conver to word x embedding 2D matrices into 1D vectors
         x1 = x1.flatten(-2)
         x2 = x2.flatten(-2)
 
         x = torch.cat((x1, x2), dim=-1)
-
         x = self.dropout(x)
 
         e1 = self.lin1(x)
@@ -86,7 +84,6 @@ class SentSim_MeanPool(nn.Module):
 
         y = F.cosine_similarity(e1, e2).unsqueeze(-1)
 
-        #y = self.lin_op(y)
         y = torch.sigmoid(self.weight*(y - self.bias))
 
         return y
@@ -123,16 +120,18 @@ def eval_model(dataset):
 
         err += (y - outputs).abs().mean() / len(train_loader)
 
-    return err
+    return err.item()
+
 
 criterion = nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
 lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
-print(eval_model(train_dataset))
+print(f'Initial train_data error {eval_model(train_dataset)}')
+print()
 
 for epoch in range(20):
-    print(f'Epoch {epoch}: Val error: {eval_model(val_dataset).item()}')
+    print(f'Epoch {epoch+1}: Val error: {eval_model(val_dataset)}')
 
     for i, data in enumerate(train_loader):
         model.train()
@@ -151,5 +150,7 @@ for epoch in range(20):
             print(f'Iteration {i}: Loss: {loss.item()}')
 
     lr_sched.step()
+    print()
 
-print(eval_model(train_dataset))
+print(f'Final train_data_error: {eval_model(train_dataset)}')
+print(f'Final val_data_error: {eval_model(val_dataset)}')
