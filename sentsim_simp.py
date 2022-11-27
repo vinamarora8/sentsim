@@ -149,9 +149,6 @@ if __name__ == '__main__':
     print(f'Initial val_data_error: {val_err}')
     print()
 
-    name = strftime("%m_%d_%H%M", gmtime()) + "_msrpc_val" + str(int(val_err * 100.0))
-    save_model(model, name)
-
     train_model(model, train_dataset, val_dataset)
 
     val_err = eval_model(model, val_dataset)
