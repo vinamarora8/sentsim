@@ -33,9 +33,10 @@ model = AutoModel.from_pretrained(checkpoint).to(device)
 
 
 # Load and tokenize data
-train_data = MsrPCDataset(test=False, tokenizer=None)
+#train_data = MsrPCDataset(test=False, tokenizer=None)
+train_data = MsrPCDataset(split = 'val')
 
-N = 100
+N = len(train_data)
 
 s1 = tokenizer(train_data.sentence1[:N], padding=True, truncation=True, return_tensors='pt')
 s2 = tokenizer(train_data.sentence2[:N], padding=True, truncation=True, return_tensors='pt')
