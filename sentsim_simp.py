@@ -1,32 +1,9 @@
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 from msrpc_data import MsrPCDataset
 
-from sklearn.metrics.pairwise import cosine_similarity
-import torch.nn.functional as F
-import matplotlib.pyplot as plt
-
-# Set device
-device = torch.device('cpu')
-try:
-    if (torch.backends.mps.is_available()):
-        device = torch.device('mps')
-except:
-    pass
-
-if (torch.cuda.is_available()):
-    device = torch.device('cuda')
-
-print(f"Device: {device}")
-
-
-def apply_attention_mask(embeddings, mask):
-    ''' Apply input token attention mask to output embeddings '''
-    mask_expanded = mask.unsqueeze(-1).expand(embeddings.size()).float()
-    return embeddings * mask_expanded
-
-class SentSim_MeanPool(nn.Module):
+class SentSim(nn.Module):
 
     def __init__(self, enc_device):
         super().__init__()
@@ -47,6 +24,11 @@ class SentSim_MeanPool(nn.Module):
 
 
     def forward(self, sent1, sent2):
+
+        def apply_attention_mask(embeddings, mask):
+            ''' Apply input token attention mask to output embeddings '''
+            mask_expanded = mask.unsqueeze(-1).expand(embeddings.size()).float()
+            return embeddings * mask_expanded
 
         # Get embeddings from transformer encoder
         with torch.no_grad():
@@ -90,10 +72,24 @@ class SentSim_MeanPool(nn.Module):
         return y
 
 
-model = SentSim_MeanPool(enc_device=device).to(device)
+# Set device
+device = torch.device('cpu')
+try:
+    if (torch.backends.mps.is_available()):
+        device = torch.device('mps')
+except:
+    pass
+
+if (torch.cuda.is_available()):
+    device = torch.device('cuda')
+
+print(f"Device: {device}")
+
+
+model = SentSim(enc_device=device).to(device)
+
 
 # Eval function
-
 
 def eval_model(dataset):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True)
