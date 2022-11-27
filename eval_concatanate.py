@@ -135,22 +135,3 @@ for i, data in enumerate(train_loader):
 print(err.item())
 
 
-
-
-
-# pred = torch.sum(op, 1) 
-
-# print(pred)
-# pred = pred.to('cpu')
-# print(match)
-# err = (match - pred).abs()
-
-
-# # sim = sim.to('cpu')
-# # pred = (sim > 0.8).int()
-# # err = (match - pred).abs().sum() / N
-# # err = err.item()
-# # print(err)
-
-# plt.scatter(match, pred)
-# plt.show()

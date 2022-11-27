@@ -26,7 +26,6 @@ def apply_attention_mask(embeddings, mask):
     ''' Apply input token attention mask to output embeddings '''
     mask_expanded = mask.unsqueeze(-1).expand(embeddings.size()).float()
     return embeddings * mask_expanded
-    # return torch.sum(embeddings * mask_expanded, 1) / torch.clamp(mask_expanded.sum(1), min=1e-9)
 
 class SentSim_MeanPool(nn.Module):
 

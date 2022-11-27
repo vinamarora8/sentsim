@@ -1,3 +1,5 @@
+##DEPRECATED
+
 import torch
 from transformers import AutoTokenizer, AutoModel
 from msrpc_data import MsrPCDataset
