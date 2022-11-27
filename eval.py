@@ -1,6 +1,7 @@
 import torch
 from transformers import AutoTokenizer, AutoModel
 from msrpc_data import MsrPCDataset
+from paraphrase_data import ParaphraseDataset
 from sklearn.metrics.pairwise import cosine_similarity
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
@@ -33,7 +34,7 @@ model = AutoModel.from_pretrained(checkpoint).to(device)
 
 
 # Load and tokenize data
-train_data = MsrPCDataset(test=False, tokenizer=None)
+train_data = ParaphraseDataset(split = "train", mode = "all")
 
 N = 100
 
