@@ -4,7 +4,7 @@ import random
 
 class ParaphraseDataset(Dataset):
 
-    def __init__(self, split, mode):
+    def __init__(self, split, mode, N=None):
         '''
         split: 'test', 'train', or 'val'
         mode: 'msrpc, tapaco, all'
@@ -18,7 +18,7 @@ class ParaphraseDataset(Dataset):
             self.readfile(fname, 0, 3, 4)
             fname = 'data/msr-paraphrase-corpus/msr_paraphrase_test.txt'
             self.readfile(fname, 0, 3, 4)
-            
+
         if mode == "tapaco" or mode == "all":
             fname = 'data/tapaco/out_file.tsv'
             self.readfile(fname, 2, 0, 1)
@@ -29,7 +29,10 @@ class ParaphraseDataset(Dataset):
         self.match = []
         self.split_data()
 
-        L = len(self.match)
+        if N is not None:
+            L = N
+        else:
+            L = len(self.match)
         if split == 'train':
             idx_start = 0
             idx_end = idx_start + int(0.7 * L)
