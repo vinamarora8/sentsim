@@ -16,8 +16,11 @@ class SentSim(nn.Module):
         self.bias = nn.Parameter(torch.tensor(0.8))
         self.weight = nn.Parameter(torch.tensor(1.0))
 
-        self.lin1 = nn.Linear(120 * 768, 100)
-        self.lin2 = nn.Linear(100, 1)
+        self.lin1 = nn.Linear(120 * 768, 768)
+        self.relu1 = nn.ReLU()
+        self.lin2 = nn.Linear(768, 100)
+        self.relu2 = nn.ReLU()
+        self.lin3 = nn.Linear(100, 1)
         self.sig = nn.Sigmoid()
 
 
@@ -49,7 +52,7 @@ class SentSim(nn.Module):
         x = x.flatten(-2)
         # x = torch.cat((x1, x2), dim=-1)
         x = self.dropout(x)
-        y = self.sig(self.lin2(self.lin1(x))) 
+        y = self.sig(self.lin3(self.relu2(self.lin2(self.relu1((self.lin1(x)))))))
         # e = self.lin1(x)
         # y = F.cosine_similarity(e1, e2).unsqueeze(-1)
         # y = torch.sigmoid(self.weight*(y - self.bias))
@@ -59,23 +62,16 @@ class SentSim(nn.Module):
 
 def eval_model(model, dataset):
 
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=True)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=True)
 
     err = 0.0
     for i, data in enumerate(dataloader):
 
         model.eval()
 
-        (sent1, sent2), y = data
+        sentence, y = data
         y = y.to(device)
         
-        # concatanate logic 
-        sentence = []
-        for i in range(len(sent1)):
-            sentence.append((sent1[i], sent2[i]))
-
-        # print(sentence)
-        # sentence = sent1 + ' ' + sent2
         outputs = model.forward(sentence)
         outputs = (outputs > 0.5).float()
 
@@ -86,9 +82,9 @@ def eval_model(model, dataset):
 
 def train_model(model, train_dataset, val_dataset):
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=256, shuffle=True)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.7)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.5, momentum=0.7)
     lr_sched = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
     for epoch in range(30):
@@ -98,13 +94,8 @@ def train_model(model, train_dataset, val_dataset):
             model.train()
             optimizer.zero_grad()
 
-            (sent1, sent2), y = data
-
-            # concatanate logic 
-            sentence = []
-            for i in range(len(sent1)):
-                sentence.append((sent1[i], sent2[i]))
-            # sentence = sent1 + ' ' + sent2
+            sentence, y = data
+            
             outputs = model.forward(sentence)
 
             y = y.to(device).float()
@@ -137,8 +128,8 @@ if __name__ == '__main__':
     from msrpc_data import MsrPCDataset
     from time import gmtime, strftime
 
-    train_dataset = MsrPCDataset(split = 'train')
-    val_dataset = MsrPCDataset(split = 'val')
+    train_dataset = MsrPCDataset(split = 'train', concat=True)
+    val_dataset = MsrPCDataset(split = 'val', concat = True)
 
     device = torch.device('cuda')
     model = SentSim(enc_device=device).to(device)
