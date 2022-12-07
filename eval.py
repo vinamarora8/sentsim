@@ -34,17 +34,15 @@ model = AutoModel.from_pretrained(checkpoint).to(device)
 
 
 # Load and tokenize data
-train_data = ParaphraseDataset(split = "train", mode = "all")
+train_data = ParaphraseDataset(split = "val", mode = "tapaco", N=20000)
 
-N = 1000
-
-s1 = tokenizer(train_data.sentence1[:N], padding=True, truncation=True, return_tensors='pt')
-s2 = tokenizer(train_data.sentence2[:N], padding=True, truncation=True, return_tensors='pt')
+s1 = tokenizer(train_data.sentence1, padding='max_length', truncation=True, max_length=60, return_tensors='pt')
+s2 = tokenizer(train_data.sentence2, padding='max_length', truncation=True, max_length=60, return_tensors='pt')
 
 s1 = s1.to(device)
 s2 = s2.to(device)
 
-match = torch.tensor(train_data.match[:N])
+match = torch.tensor(train_data.match)
 
 # Evaluate
 print('starting eval')
@@ -60,7 +58,7 @@ with torch.no_grad():
 
 sim = sim.to('cpu')
 pred = (sim > 0.8).int()
-err = (match - pred).abs().sum() / N
+err = (match - pred).abs().sum() / len(train_data)
 err = err.item()
 print(err)
 
