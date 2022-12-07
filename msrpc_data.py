@@ -4,11 +4,12 @@ import random
 
 class MsrPCDataset(Dataset):
 
-    def __init__(self, split, augment=True):
+    def __init__(self, split, augment=True, concat=False):
         '''
         split: 'test', 'train', or 'val'
         '''
 
+        self.concat = concat
         self.train_fname = 'data/msr-paraphrase-corpus/msr_paraphrase_train.txt'
         self.test_fname = 'data/msr-paraphrase-corpus/msr_paraphrase_test.txt'
 
@@ -101,7 +102,11 @@ class MsrPCDataset(Dataset):
         return len(self.match)
 
     def __getitem__(self, idx):
-        x = [self.sentence1[idx], self.sentence2[idx]]
+
+        if self.concat == True:
+            x = self.sentence1[idx] + ' ' + self.sentence2[idx]
+        else:
+            x = [self.sentence1[idx], self.sentence2[idx]]
         y = torch.tensor(self.match[idx]).unsqueeze(-1)
 
         return x, y
