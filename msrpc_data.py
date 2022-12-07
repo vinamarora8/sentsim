@@ -4,7 +4,7 @@ import random
 
 class MsrPCDataset(Dataset):
 
-    def __init__(self, split):
+    def __init__(self, split, augment=True):
         '''
         split: 'test', 'train', or 'val'
         '''
@@ -23,7 +23,9 @@ class MsrPCDataset(Dataset):
         self.match = []
 
         self.split_data()
-        self.augment_data()
+
+        if augment:
+            self.augment_data()
 
         L = len(self.match)
         if split == 'train':
